@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "najdi_slevu",
+  "project_id": "3c4afdb1-570a-4b81-9dd5-89c971519639"
+}
