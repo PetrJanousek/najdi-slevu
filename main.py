@@ -18,6 +18,7 @@ from scraper.display import show_discounts, show_hot_deals
 from scraper.filters import filter_alcohol
 from scraper.gmail_client import fetch_leaflet_pdfs
 from scraper.pdf_parser import parse_pdf
+from scraper.persistence import persist_matches
 from scraper.watchlist import load_watchlist, match_discounts
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
@@ -62,6 +63,8 @@ def run(
 
         if watchlist_keywords:
             matches = match_discounts(discounts, watchlist_keywords)
+            if matches:
+                persist_matches(matches, watchlist_keywords)
             all_hot_deals.extend(matches)
 
     if all_hot_deals:
