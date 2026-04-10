@@ -3,3 +3,14 @@
 .dolt/
 *.db
 .beads-credential-key
+# bd worktree
+agent-1/
+
+# Supermarket leaflet PDFs (copyrighted — do not commit)
+tests/fixtures/leaflets/**/*.pdf
+
+# Python build artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
