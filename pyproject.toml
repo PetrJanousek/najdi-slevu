@@ -11,6 +11,9 @@ dependencies = [
     "pdfplumber>=0.11",
     "rich>=13",
     "typer>=0.12",
+    "google-auth>=2.28",
+    "google-auth-oauthlib>=1.2",
+    "google-api-python-client>=2.120",
 ]
 
 [project.scripts]
@@ -28,4 +31,4 @@ include = ["scraper*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--tb=short"
+addopts = "--tb=short -W ignore::FutureWarning"
