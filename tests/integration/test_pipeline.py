@@ -55,12 +55,24 @@ def _mock_parse(path):
     return _FAKE_DISCOUNTS
 
 
+def _db_patches():
+    """Patches that replace DB persistence with no-ops for display-focused tests."""
+    return (
+        patch("main.make_engine"),
+        patch("main.make_session_factory"),
+        patch("main.save_scrape_run"),
+        patch("main.save_discounts"),
+    )
+
+
 class TestPipelineGlue:
     def test_pipeline_prints_table(self):
         """Pipeline fetches PDFs, parses them, and outputs a Rich table."""
+        p1, p2, p3, p4 = _db_patches()
         with (
             patch("main.fetch_leaflet_pdfs", side_effect=_mock_fetch),
             patch("main.parse_pdf", side_effect=_mock_parse),
+            p1, p2, p3, p4,
         ):
             result = runner.invoke(app, ["--credentials", "fake.json", "--token", "fake.json"])
 
@@ -70,9 +82,11 @@ class TestPipelineGlue:
 
     def test_pipeline_prints_prices(self):
         """Discounted prices appear in the output."""
+        p1, p2, p3, p4 = _db_patches()
         with (
             patch("main.fetch_leaflet_pdfs", side_effect=_mock_fetch),
             patch("main.parse_pdf", side_effect=_mock_parse),
+            p1, p2, p3, p4,
         ):
             result = runner.invoke(app, [])
 
@@ -90,9 +104,11 @@ class TestPipelineGlue:
 
     def test_pipeline_alcohol_only_filters(self):
         """--alcohol-only flag filters down to alcohol-related discounts."""
+        p1, p2, p3, p4 = _db_patches()
         with (
             patch("main.fetch_leaflet_pdfs", side_effect=_mock_fetch),
             patch("main.parse_pdf", side_effect=_mock_parse),
+            p1, p2, p3, p4,
         ):
             result = runner.invoke(app, ["--alcohol-only"])
 
@@ -102,9 +118,11 @@ class TestPipelineGlue:
 
     def test_pipeline_shows_pdf_filename_header(self):
         """Each PDF gets a filename header line in the output."""
+        p1, p2, p3, p4 = _db_patches()
         with (
             patch("main.fetch_leaflet_pdfs", side_effect=_mock_fetch),
             patch("main.parse_pdf", side_effect=_mock_parse),
+            p1, p2, p3, p4,
         ):
             result = runner.invoke(app, [])
 

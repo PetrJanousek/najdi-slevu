@@ -1,0 +1,117 @@
+# Known brand names for the Czech market — one per line, lowercase
+# These are stripped from product names before generating canonical keys
+albert
+albert bio
+becherovka
+beskyd
+biomin
+bonduelle
+božkov
+budějovický budvar
+budvar
+cappy
+coca-cola
+coca cola
+coffeeto
+colonel bradford
+colonel bradford's
+cornell
+cornetto
+danone
+desperados
+dr. oetker
+dr oetker
+excelent
+farmer
+fernet
+fernet stock
+finessa
+flora
+flor de caña
+free
+galbani
+globus
+gordic
+granko
+granola
+gut&günstig
+hamé
+havana club
+heineken
+hellmann's
+hellmans
+horalky
+jacobs
+jameson
+jihočeská
+jim beam
+john smith
+kofola
+koktejl
+kong strong
+kronenbourg
+kubánek
+lahůdky albert
+lays
+lay's
+lidl
+lindt
+magnum
+majonéza
+malý doktor
+malibu
+manor farm
+mars
+mccain
+mcdougall's
+milka
+milky way
+moravia
+müller
+müllermilch
+nestlé
+nike
+nutricia
+nutella
+oetker
+omnia
+oreo
+penny
+pepsi
+pilsner urquell
+plzeňský prazdroj
+president
+président
+pringles
+pribináček
+rajec
+rauch
+red bull
+ríša
+rolmops
+romerquelle
+royal crown
+salitos
+sazka
+schweppes
+sedivy
+sirup
+slunečné lúky
+somersby
+sparkling ice
+stock
+tesco
+tesco finest
+tesco free from
+tropicana
+tuzemák
+tuzemský rum
+varesa
+vegemite
+veselá kráva
+volvic
+whisky
+wiskey
+xixo
+ypsilon
+zlatopramen
