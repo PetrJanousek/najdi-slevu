@@ -1,0 +1,644 @@
+openapi: 3.1.0
+
+info:
+  title: Najdi Slevu API
+  version: 0.1.0
+  description: >
+    Czech supermarket discount aggregator API. Exposes parsed leaflet
+    discounts, price history, fake-discount detection, and user watchlists.
+  contact:
+    name: Petr Janousek
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: health
+    description: Service health
+  - name: supermarkets
+    description: Supermarket chain catalogue
+  - name: discounts
+    description: Parsed discount listings and price history
+  - name: auth
+    description: User registration and login
+  - name: watchlist
+    description: Authenticated user's keyword watchlist
+  - name: devices
+    description: Push notification device tokens
+
+paths:
+
+  # ---------------------------------------------------------------------------
+  # Health
+  # ---------------------------------------------------------------------------
+  /health:
+    get:
+      operationId: getHealth
+      tags: [health]
+      summary: Service liveness probe
+      security: []
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ---------------------------------------------------------------------------
+  # Supermarkets
+  # ---------------------------------------------------------------------------
+  /supermarkets:
+    get:
+      operationId: listSupermarkets
+      tags: [supermarkets]
+      summary: List all known supermarket chains
+      security: []
+      responses:
+        "200":
+          description: Array of supermarket objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Supermarket"
+
+  # ---------------------------------------------------------------------------
+  # Discounts
+  # ---------------------------------------------------------------------------
+  /discounts:
+    get:
+      operationId: listDiscounts
+      tags: [discounts]
+      summary: List discounts with optional filters
+      security: []
+      parameters:
+        - name: supermarket
+          in: query
+          description: Filter by supermarket name (case-insensitive)
+          schema:
+            type: string
+          example: Lidl
+        - name: min_discount_pct
+          in: query
+          description: Return only discounts with discount_pct >= this value
+          schema:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 100
+          example: 20
+        - name: valid_on
+          in: query
+          description: "Filter to discounts valid on this date (ISO 8601). Defaults to today."
+          schema:
+            type: string
+            format: date
+          example: "2026-04-10"
+        - name: q
+          in: query
+          description: Full-text search substring (diacritics-insensitive)
+          schema:
+            type: string
+          example: "káva"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Paginated list of discounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscountPage"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /discounts/{id}:
+    get:
+      operationId: getDiscount
+      tags: [discounts]
+      summary: Retrieve a single discount by ID
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/DiscountId"
+      responses:
+        "200":
+          description: Discount detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Discount"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /discounts/{id}/history:
+    get:
+      operationId: getDiscountHistory
+      tags: [discounts]
+      summary: Price history for the canonical product of this discount
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/DiscountId"
+      responses:
+        "200":
+          description: Time-ordered price observations for the canonical product
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [canonical_key, history]
+                properties:
+                  canonical_key:
+                    type: string
+                    description: Canonical product identifier
+                    example: "lidl__mleko__1.0_l"
+                  history:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PricePoint"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ---------------------------------------------------------------------------
+  # Auth
+  # ---------------------------------------------------------------------------
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Create a new user account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCredentials"
+      responses:
+        "201":
+          description: User created; returns auth token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthToken"
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Authenticate and obtain a bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCredentials"
+      responses:
+        "200":
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthToken"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  # ---------------------------------------------------------------------------
+  # Watchlist
+  # ---------------------------------------------------------------------------
+  /me/watchlist:
+    get:
+      operationId: listWatchlist
+      tags: [watchlist]
+      summary: Get the authenticated user's watchlist
+      responses:
+        "200":
+          description: Array of watchlist items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WatchlistItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      operationId: addWatchlistItem
+      tags: [watchlist]
+      summary: Add a keyword to the watchlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [keyword]
+              properties:
+                keyword:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                  example: "káva"
+      responses:
+        "201":
+          description: Item added (or already present — idempotent)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+    delete:
+      operationId: removeWatchlistItem
+      tags: [watchlist]
+      summary: Remove a keyword from the watchlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [keyword]
+              properties:
+                keyword:
+                  type: string
+                  example: "káva"
+      responses:
+        "204":
+          description: Item removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ---------------------------------------------------------------------------
+  # Devices
+  # ---------------------------------------------------------------------------
+  /me/devices:
+    post:
+      operationId: registerDevice
+      tags: [devices]
+      summary: Register a device token for push notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceRegistration"
+      responses:
+        "201":
+          description: Device registered (idempotent — same token returns 201)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+# =============================================================================
+# Components
+# =============================================================================
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer token obtained from /auth/login or /auth/register
+
+  parameters:
+    DiscountId:
+      name: id
+      in: path
+      required: true
+      description: Unique discount row identifier
+      schema:
+        type: integer
+        format: int64
+      example: 42
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+
+    # -------------------------------------------------------------------------
+    # Supermarket
+    # -------------------------------------------------------------------------
+    Supermarket:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 1
+        name:
+          type: string
+          maxLength: 64
+          example: "Lidl"
+
+    # -------------------------------------------------------------------------
+    # Discount
+    # -------------------------------------------------------------------------
+    Discount:
+      type: object
+      required: [id, name, discounted_price]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 101
+        supermarket:
+          $ref: "#/components/schemas/Supermarket"
+          nullable: true
+        name:
+          type: string
+          example: "Bio Mléko 3,5 % 1 l"
+        original_price:
+          type: number
+          format: float
+          nullable: true
+          example: 29.90
+        discounted_price:
+          type: number
+          format: float
+          example: 22.90
+        discount_pct:
+          type: number
+          format: float
+          nullable: true
+          minimum: 0
+          maximum: 100
+          example: 23.4
+        valid_from:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-04-07"
+        valid_to:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-04-13"
+        canonical_key:
+          type: string
+          nullable: true
+          description: Normalised product identifier used for price history grouping
+          example: "bio_mleko__1.0_l"
+        canonical_brand:
+          type: string
+          nullable: true
+          example: "Bio"
+        canonical_product_type:
+          type: string
+          nullable: true
+          example: "mléko"
+        canonical_quantity_value:
+          type: number
+          format: float
+          nullable: true
+          example: 1.0
+        canonical_quantity_unit:
+          type: string
+          nullable: true
+          example: "l"
+
+    # -------------------------------------------------------------------------
+    # DiscountPage
+    # -------------------------------------------------------------------------
+    DiscountPage:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Discount"
+        total:
+          type: integer
+          description: Total matching rows (before pagination)
+          example: 243
+        page:
+          type: integer
+          example: 1
+        page_size:
+          type: integer
+          example: 50
+
+    # -------------------------------------------------------------------------
+    # PricePoint
+    # -------------------------------------------------------------------------
+    PricePoint:
+      type: object
+      required: [scraped_at, discounted_price]
+      properties:
+        scraped_at:
+          type: string
+          format: date-time
+          description: When this price was observed (UTC)
+          example: "2026-03-15T10:30:00Z"
+        supermarket:
+          type: string
+          nullable: true
+          example: "Lidl"
+        discounted_price:
+          type: number
+          format: float
+          example: 22.90
+        original_price:
+          type: number
+          format: float
+          nullable: true
+          example: 29.90
+        canonical_key:
+          type: string
+          nullable: true
+          example: "bio_mleko__1.0_l"
+
+    # -------------------------------------------------------------------------
+    # Auth
+    # -------------------------------------------------------------------------
+    UserCredentials:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "petr@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "s3cr3tP@ss"
+
+    User:
+      type: object
+      required: [id, email]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 7
+        email:
+          type: string
+          format: email
+          example: "petr@example.com"
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-01-01T00:00:00Z"
+
+    AuthToken:
+      type: object
+      required: [access_token, token_type, user]
+      properties:
+        access_token:
+          type: string
+          description: Opaque bearer token for subsequent requests
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        token_type:
+          type: string
+          enum: [bearer]
+          example: bearer
+        expires_in:
+          type: integer
+          description: Token lifetime in seconds
+          example: 86400
+        user:
+          $ref: "#/components/schemas/User"
+
+    # -------------------------------------------------------------------------
+    # Watchlist
+    # -------------------------------------------------------------------------
+    WatchlistItem:
+      type: object
+      required: [id, keyword]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 3
+        keyword:
+          type: string
+          maxLength: 256
+          example: "káva"
+
+    # -------------------------------------------------------------------------
+    # Device
+    # -------------------------------------------------------------------------
+    DeviceRegistration:
+      type: object
+      required: [token, platform]
+      properties:
+        token:
+          type: string
+          description: APNs or FCM device token
+          example: "abc123devicetoken"
+        platform:
+          type: string
+          enum: [ios, android]
+          example: ios
+
+    Device:
+      type: object
+      required: [id, token, platform]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 5
+        token:
+          type: string
+          example: "abc123devicetoken"
+        platform:
+          type: string
+          enum: [ios, android]
+          example: ios
+        registered_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-04-10T08:00:00Z"
+
+    # -------------------------------------------------------------------------
+    # Error
+    # -------------------------------------------------------------------------
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+          example: "Not found"
+        code:
+          type: string
+          nullable: true
+          example: "discount_not_found"
