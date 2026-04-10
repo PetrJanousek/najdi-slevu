@@ -16,6 +16,16 @@ dependencies = [
 [project.scripts]
 najdi-slevu = "scraper.cli:app"
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["scraper*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short"
