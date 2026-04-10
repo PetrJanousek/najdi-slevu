@@ -89,6 +89,13 @@ class TestSaveDiscounts:
         count = session.execute(select(Supermarket)).scalars().all()
         assert len(count) == 1
 
+    def test_deduplicates_within_run(self, session):
+        """Duplicate (supermarket, name_normalized, price, valid_from) kept once."""
+        run = save_scrape_run(session)
+        duplicate = _make_parsed("Rum Jamaica", 29.90)
+        rows = save_discounts(session, run, [duplicate, duplicate], supermarket_name="lidl")
+        assert len(rows) == 1
+
 
 class TestGetActiveDiscounts:
     def _add_discount(self, session, name, valid_from=None, valid_to=None):
