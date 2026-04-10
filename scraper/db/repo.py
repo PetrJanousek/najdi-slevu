@@ -108,12 +108,26 @@ def save_discounts(
         supermarket = _get_or_create_supermarket(session, supermarket_name)
 
     rows: list[Discount] = []
+    # Dedup within this run: (supermarket_id, name_normalized, discounted_price, valid_from)
+    seen: set[tuple] = set()
+
     for p in parsed:
+        name_norm = _normalize_name(p.name)
+        dedup_key = (
+            supermarket.id if supermarket else None,
+            name_norm,
+            p.discounted_price,
+            p.valid_from,
+        )
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
+
         row = Discount(
             scrape_run_id=run.id,
             supermarket_id=supermarket.id if supermarket else None,
             name=p.name,
-            name_normalized=_normalize_name(p.name),
+            name_normalized=name_norm,
             original_price=p.original_price,
             discounted_price=p.discounted_price,
             discount_pct=p.discount_pct,
