@@ -15,14 +15,14 @@ from pathlib import Path
 
 import typer
 
-from scraper.db.repo import save_discounts, save_scrape_run
+from scraper.db.repo import list_watchlist, save_discounts, save_scrape_run
 from scraper.db.session import make_engine, make_session_factory
 from scraper.display import show_discounts, show_hot_deals
 from scraper.filters import filter_alcohol
 from scraper.gmail_client import fetch_leaflet_pdfs
 from scraper.pdf_parser import parse_pdf
 from scraper.persistence import persist_matches
-from scraper.watchlist import load_watchlist, match_discounts
+from scraper.watchlist import match_discounts
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
@@ -49,13 +49,14 @@ def run(
         typer.echo("No new leaflets found.")
         raise typer.Exit()
 
-    # Load watchlist keywords once (gate: skip HOT DEALS if file absent)
-    watchlist_keywords = load_watchlist()
-    all_hot_deals: list = []
-
     # Set up DB session for this pipeline run
     engine = make_engine()
     SessionFactory = make_session_factory(engine)
+
+    # Load watchlist keywords from DB
+    with SessionFactory() as _wl_session:
+        watchlist_keywords = [item.keyword for item in list_watchlist(_wl_session)]
+    all_hot_deals: list = []
 
     with SessionFactory() as session:
         for pdf_path in pdf_paths:

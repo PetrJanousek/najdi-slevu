@@ -3,7 +3,13 @@ from typing import Optional
 
 import typer
 
-from scraper.db.repo import get_active_discounts, search_discounts
+from scraper.db.repo import (
+    add_watchlist_item,
+    get_active_discounts,
+    list_watchlist,
+    remove_watchlist_item,
+    search_discounts,
+)
 from scraper.db.session import make_engine, make_session_factory
 from scraper.display import show_discounts
 from scraper.filters import filter_alcohol
@@ -13,6 +19,8 @@ from scraper.pdf_parser import parse_pdf
 app = typer.Typer(add_completion=False)
 query_app = typer.Typer(help="Query discounts stored in the SQLite database.")
 app.add_typer(query_app, name="query")
+watchlist_app = typer.Typer(help="Manage the keyword watchlist in the database.")
+app.add_typer(watchlist_app, name="watchlist")
 
 _KNOWN_SUPERMARKETS = {"tesco", "albert", "billa", "penny", "kaufland", "lidl", "globus", "spar"}
 
@@ -132,3 +140,51 @@ def query_search(
     ]
 
     show_discounts(parsed)
+
+
+# ---------------------------------------------------------------------------
+# watchlist — manage keyword watchlist in the DB
+# ---------------------------------------------------------------------------
+
+@watchlist_app.command("add")
+def watchlist_add(
+    keyword: str = typer.Argument(..., help="Keyword to add to the watchlist"),
+) -> None:
+    """Add a keyword to the watchlist."""
+    engine = make_engine()
+    Session = make_session_factory(engine)
+    with Session() as session:
+        item = add_watchlist_item(session, keyword.lower().strip())
+        session.commit()
+    typer.echo(f"Watchlist: added '{item.keyword}' (id={item.id}).")
+
+
+@watchlist_app.command("list")
+def watchlist_list() -> None:
+    """List all keywords in the watchlist."""
+    engine = make_engine()
+    Session = make_session_factory(engine)
+    with Session() as session:
+        items = list_watchlist(session)
+    if not items:
+        typer.echo("Watchlist is empty.")
+        raise typer.Exit()
+    for item in items:
+        typer.echo(item.keyword)
+
+
+@watchlist_app.command("remove")
+def watchlist_remove(
+    keyword: str = typer.Argument(..., help="Keyword to remove from the watchlist"),
+) -> None:
+    """Remove a keyword from the watchlist."""
+    engine = make_engine()
+    Session = make_session_factory(engine)
+    with Session() as session:
+        removed = remove_watchlist_item(session, keyword.lower().strip())
+        session.commit()
+    if removed:
+        typer.echo(f"Watchlist: removed '{keyword}'.")
+    else:
+        typer.echo(f"Watchlist: '{keyword}' not found.")
+        raise typer.Exit(code=1)
