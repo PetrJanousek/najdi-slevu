@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -109,14 +110,27 @@ class TestPipelineGlue:
 
         assert "2026-04-07.pdf" in result.output
 
-    def test_hot_deals_shown_when_watchlist_matches(self, tmp_path):
-        """HOT DEALS panel appears when watchlist.yaml matches a discount."""
-        watchlist = tmp_path / "watchlist.yaml"
-        watchlist.write_text("- mléko\n", encoding="utf-8")
+    def _db_watchlist_patch(self, keywords: list[str]):
+        """Return patches that make main.py load *keywords* from the DB watchlist."""
+        items = [SimpleNamespace(keyword=kw) for kw in keywords]
+        session_mock = MagicMock()
+        session_ctx = MagicMock()
+        session_ctx.__enter__ = MagicMock(return_value=session_mock)
+        session_ctx.__exit__ = MagicMock(return_value=False)
+        factory_mock = MagicMock(return_value=session_ctx)
+        return (
+            patch("main.make_engine"),
+            patch("main.make_session_factory", return_value=factory_mock),
+            patch("main.list_watchlist", return_value=items),
+        )
+
+    def test_hot_deals_shown_when_watchlist_matches(self):
+        """HOT DEALS panel appears when DB watchlist matches a discount."""
+        p1, p2, p3 = self._db_watchlist_patch(["mléko"])
         with (
             patch("main.fetch_leaflet_pdfs", side_effect=_mock_fetch),
             patch("main.parse_pdf", side_effect=_mock_parse),
-            patch("main.load_watchlist", return_value=["mléko"]),
+            p1, p2, p3,
         ):
             result = runner.invoke(app, [])
 
@@ -124,11 +138,12 @@ class TestPipelineGlue:
         assert "HOT DEALS" in result.output
 
     def test_hot_deals_absent_when_no_watchlist_match(self):
-        """HOT DEALS panel is absent when watchlist has no matching keywords."""
+        """HOT DEALS panel is absent when DB watchlist has no matching keywords."""
+        p1, p2, p3 = self._db_watchlist_patch(["rum"])  # no rum in fakes
         with (
             patch("main.fetch_leaflet_pdfs", side_effect=_mock_fetch),
             patch("main.parse_pdf", side_effect=_mock_parse),
-            patch("main.load_watchlist", return_value=["rum"]),  # no rum in fakes
+            p1, p2, p3,
         ):
             result = runner.invoke(app, [])
 
@@ -136,11 +151,12 @@ class TestPipelineGlue:
         assert "HOT DEALS" not in result.output
 
     def test_hot_deals_absent_when_no_watchlist(self):
-        """HOT DEALS panel absent when watchlist.yaml is missing (empty keywords)."""
+        """HOT DEALS panel absent when DB watchlist is empty."""
+        p1, p2, p3 = self._db_watchlist_patch([])
         with (
             patch("main.fetch_leaflet_pdfs", side_effect=_mock_fetch),
             patch("main.parse_pdf", side_effect=_mock_parse),
-            patch("main.load_watchlist", return_value=[]),
+            p1, p2, p3,
         ):
             result = runner.invoke(app, [])
 
