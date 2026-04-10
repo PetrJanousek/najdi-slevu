@@ -1,0 +1,13 @@
+# watchlist.example.yaml — copy to watchlist.yaml and customize
+#
+# List keywords to watch for in supermarket leaflet discounts.
+# One keyword per line. Case-insensitive. Partial matches are supported.
+# Copy this file to watchlist.yaml (gitignored) and add your own items.
+
+- rum
+- becherovka
+- slivovice
+- whisky
+- víno
+- pivo
+- prosecco

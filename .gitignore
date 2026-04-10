@@ -9,6 +9,9 @@ agent-1/
 # Supermarket leaflet PDFs (copyrighted — do not commit)
 tests/fixtures/leaflets/**/*.pdf
 
+# Personal watchlist (contains private keywords — commit only watchlist.example.yaml)
+watchlist.yaml
+
 # Python build artefacts
 __pycache__/
 *.py[cod]
