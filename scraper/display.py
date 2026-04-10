@@ -6,6 +6,7 @@ from datetime import date
 from typing import Optional
 
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
@@ -73,3 +74,38 @@ def show_discounts(discounts: list[Discount], supermarket: Optional[str] = None)
         )
 
     console.print(table)
+
+
+def show_hot_deals(discounts: list[Discount]) -> None:
+    """Render watchlist-matched discounts as a bold HOT DEALS panel.
+
+    Args:
+        discounts: Discount objects that matched watchlist keywords.
+    """
+    table = Table(
+        show_header=True,
+        header_style="bold red",
+        show_lines=False,
+        expand=False,
+        border_style="red",
+    )
+    table.add_column("Name", style="bold", no_wrap=False, min_width=20)
+    table.add_column("Disc. price", justify="right", no_wrap=True)
+    table.add_column("Discount%", justify="right", no_wrap=True)
+    table.add_column("Valid to", justify="center", no_wrap=True)
+
+    for discount in discounts:
+        table.add_row(
+            discount.name or "\u2014",
+            _format_price(discount.discounted_price),
+            _format_discount_pct(discount.discount_pct),
+            _format_date(discount.valid_to),
+        )
+
+    panel = Panel(
+        table,
+        title="\U0001f525 HOT DEALS",
+        title_align="left",
+        border_style="bold red",
+    )
+    console.print(panel)
