@@ -108,3 +108,41 @@ class TestPipelineGlue:
             result = runner.invoke(app, [])
 
         assert "2026-04-07.pdf" in result.output
+
+    def test_hot_deals_shown_when_watchlist_matches(self, tmp_path):
+        """HOT DEALS panel appears when watchlist.yaml matches a discount."""
+        watchlist = tmp_path / "watchlist.yaml"
+        watchlist.write_text("- mléko\n", encoding="utf-8")
+        with (
+            patch("main.fetch_leaflet_pdfs", side_effect=_mock_fetch),
+            patch("main.parse_pdf", side_effect=_mock_parse),
+            patch("main.load_watchlist", return_value=["mléko"]),
+        ):
+            result = runner.invoke(app, [])
+
+        assert result.exit_code == 0
+        assert "HOT DEALS" in result.output
+
+    def test_hot_deals_absent_when_no_watchlist_match(self):
+        """HOT DEALS panel is absent when watchlist has no matching keywords."""
+        with (
+            patch("main.fetch_leaflet_pdfs", side_effect=_mock_fetch),
+            patch("main.parse_pdf", side_effect=_mock_parse),
+            patch("main.load_watchlist", return_value=["rum"]),  # no rum in fakes
+        ):
+            result = runner.invoke(app, [])
+
+        assert result.exit_code == 0
+        assert "HOT DEALS" not in result.output
+
+    def test_hot_deals_absent_when_no_watchlist(self):
+        """HOT DEALS panel absent when watchlist.yaml is missing (empty keywords)."""
+        with (
+            patch("main.fetch_leaflet_pdfs", side_effect=_mock_fetch),
+            patch("main.parse_pdf", side_effect=_mock_parse),
+            patch("main.load_watchlist", return_value=[]),
+        ):
+            result = runner.invoke(app, [])
+
+        assert result.exit_code == 0
+        assert "HOT DEALS" not in result.output
