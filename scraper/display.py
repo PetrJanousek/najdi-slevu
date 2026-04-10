@@ -39,14 +39,16 @@ def _format_discount_pct(pct: Optional[float]) -> Text:
     return Text(label)
 
 
-def show_discounts(discounts: list[Discount]) -> None:
+def show_discounts(discounts: list[Discount], supermarket: Optional[str] = None) -> None:
     """Render a list of Discount objects as a rich table and print to stdout.
 
     Args:
         discounts: List of Discount objects to display.
+        supermarket: Optional supermarket name shown in the table title.
     """
+    title = f"Slevy — {supermarket.capitalize()}" if supermarket else "Slevy"
     table = Table(
-        title="Slevy",
+        title=title,
         show_header=True,
         header_style="bold cyan",
         show_lines=False,
