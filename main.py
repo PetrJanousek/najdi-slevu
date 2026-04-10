@@ -9,6 +9,7 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import typer
@@ -17,6 +18,8 @@ from scraper.display import show_discounts
 from scraper.filters import filter_alcohol
 from scraper.gmail_client import fetch_leaflet_pdfs
 from scraper.pdf_parser import parse_pdf
+
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
 app = typer.Typer(add_completion=False)
 
@@ -44,6 +47,10 @@ def run(
     for pdf_path in pdf_paths:
         typer.echo(f"\n=== {pdf_path.name} ===")
         discounts = parse_pdf(pdf_path)
+        if not discounts:
+            logging.getLogger(__name__).warning(
+                "Parser produced zero discounts for %s", pdf_path.name
+            )
         if alcohol_only:
             discounts = filter_alcohol(discounts)
         show_discounts(discounts)
