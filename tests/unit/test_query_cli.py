@@ -26,6 +26,7 @@ def _fake_row(
         valid_from=valid_from or date(2026, 4, 7),
         valid_to=valid_to or date(2026, 4, 13),
         raw_text=name,
+        canonical_key=None,
     )
 
 
@@ -47,6 +48,7 @@ class TestQueryList:
             patch("scraper.cli.make_engine"),
             patch("scraper.cli.make_session_factory", return_value=factory),
             patch("scraper.cli.get_active_discounts", return_value=fakes),
+            patch("scraper.cli.compute_product_stats"),
         ):
             result = runner.invoke(app, ["query", "list"])
         assert result.exit_code == 0
@@ -73,6 +75,7 @@ class TestQueryList:
             patch("scraper.cli.make_engine"),
             patch("scraper.cli.make_session_factory", return_value=factory),
             patch("scraper.cli.get_active_discounts", return_value=fakes),
+            patch("scraper.cli.compute_product_stats"),
         ):
             result = runner.invoke(app, ["query", "list", "--min-discount", "20"])
         assert "Big discount" in result.output

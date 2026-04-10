@@ -5,13 +5,15 @@ import typer
 
 from scraper.db.repo import (
     add_watchlist_item,
+    compute_product_stats,
     get_active_discounts,
+    get_price_history,
     list_watchlist,
     remove_watchlist_item,
     search_discounts,
 )
 from scraper.db.session import make_engine, make_session_factory
-from scraper.display import show_discounts
+from scraper.display import show_discounts, show_discounts_with_stats, show_price_history
 from scraper.filters import filter_alcohol
 from scraper.models import Discount as ParsedDiscount
 from scraper.pdf_parser import parse_pdf
@@ -80,31 +82,23 @@ def query_list(
 
     with Session() as session:
         rows = get_active_discounts(session, supermarket_name=supermarket)
+        filtered = [
+            r for r in rows
+            if min_discount is None or (r.discount_pct is not None and r.discount_pct >= min_discount)
+        ]
+        if not filtered:
+            typer.echo("No active discounts found." if not rows else "No discounts match the given filters.")
+            raise typer.Exit()
 
-    if not rows:
-        typer.echo("No active discounts found.")
-        raise typer.Exit()
+        # Compute stats for each unique canonical_key
+        seen_keys: set[str] = set()
+        stats_map: dict = {}
+        for r in filtered:
+            if r.canonical_key and r.canonical_key not in seen_keys:
+                seen_keys.add(r.canonical_key)
+                stats_map[r.canonical_key] = compute_product_stats(session, r.canonical_key)
 
-    # Convert ORM rows to ParsedDiscount for display
-    parsed = [
-        ParsedDiscount(
-            name=r.name,
-            original_price=r.original_price,
-            discounted_price=r.discounted_price,
-            discount_pct=r.discount_pct,
-            valid_from=r.valid_from,
-            valid_to=r.valid_to,
-            raw_text=r.raw_text or "",
-        )
-        for r in rows
-        if min_discount is None or (r.discount_pct is not None and r.discount_pct >= min_discount)
-    ]
-
-    if not parsed:
-        typer.echo("No discounts match the given filters.")
-        raise typer.Exit()
-
-    show_discounts(parsed, supermarket=supermarket)
+    show_discounts_with_stats(filtered, stats_map, supermarket=supermarket)
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +134,34 @@ def query_search(
     ]
 
     show_discounts(parsed)
+
+
+# ---------------------------------------------------------------------------
+# query history — show price history for a keyword
+# ---------------------------------------------------------------------------
+
+@query_app.command("history")
+def query_history(
+    keyword: str = typer.Argument(..., help="Keyword to look up price history for"),
+) -> None:
+    """Show cross-chain price history for products matching a keyword."""
+    engine = make_engine()
+    Session = make_session_factory(engine)
+
+    with Session() as session:
+        rows = search_discounts(session, keyword)
+        if not rows:
+            typer.echo(f"No discounts found for '{keyword}'.")
+            raise typer.Exit()
+
+        # Collect unique canonical keys from matching rows
+        seen: set[str] = set()
+        for r in rows:
+            if r.canonical_key and r.canonical_key not in seen:
+                seen.add(r.canonical_key)
+                points = get_price_history(session, r.canonical_key)
+                if points:
+                    show_price_history(points, r.canonical_key)
 
 
 # ---------------------------------------------------------------------------

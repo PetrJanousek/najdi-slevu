@@ -6,8 +6,10 @@ unit-test against an in-memory SQLite database.
 
 from __future__ import annotations
 
+import statistics
 import unicodedata
-from datetime import date, datetime, timezone
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import select
@@ -16,6 +18,31 @@ from sqlalchemy.orm import Session
 from scraper.canonical import canonicalize
 from scraper.db.models import Discount, HotDealHit, ScrapeRun, Supermarket, WatchlistItem
 from scraper.models import Discount as ParsedDiscount
+
+
+# ---------------------------------------------------------------------------
+# Price history / stats data types
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PricePoint:
+    """A single price observation from the DB."""
+    scraped_at: datetime
+    supermarket: Optional[str]
+    discounted_price: float
+    original_price: Optional[float]
+    canonical_key: Optional[str]
+
+
+@dataclass
+class ProductStats:
+    """Aggregated price statistics for one canonical product."""
+    lowest_ever: Optional[float]
+    lowest_90d: Optional[float]
+    median_90d: Optional[float]
+    times_on_sale_90d: int
+    is_at_historical_low: bool  # current best == lowest ever
+    fake_discount: bool         # suspiciously stable "discount"
 
 
 # ---------------------------------------------------------------------------
@@ -213,6 +240,132 @@ def search_discounts(session: Session, query: str) -> list[Discount]:
         .order_by(Discount.discounted_price)
     )
     return list(session.execute(stmt).scalars())
+
+
+# ---------------------------------------------------------------------------
+# Price history & statistics
+# ---------------------------------------------------------------------------
+
+def get_price_history(
+    session: Session,
+    canonical_key: str,
+) -> list[PricePoint]:
+    """Return time-ordered price observations for *canonical_key*.
+
+    Joins discounts → scrape_runs (for timestamp) and supermarkets (for name).
+    """
+    stmt = (
+        select(Discount)
+        .where(Discount.canonical_key == canonical_key)
+        .order_by(ScrapeRun.started_at)
+        .join(Discount.scrape_run)
+        .outerjoin(Discount.supermarket)
+    )
+    rows = list(session.execute(stmt).scalars())
+    return [
+        PricePoint(
+            scraped_at=row.scrape_run.started_at,
+            supermarket=row.supermarket.name if row.supermarket else None,
+            discounted_price=row.discounted_price,
+            original_price=row.original_price,
+            canonical_key=row.canonical_key,
+        )
+        for row in rows
+    ]
+
+
+def compute_product_stats(
+    session: Session,
+    canonical_key: str,
+    as_of: Optional[datetime] = None,
+) -> ProductStats:
+    """Compute aggregated price statistics for *canonical_key*.
+
+    Parameters
+    ----------
+    session:
+        Active SQLAlchemy session.
+    canonical_key:
+        The canonical product key to aggregate.
+    as_of:
+        Reference timestamp (defaults to UTC now). Used to compute 90d/60d windows.
+
+    Returns
+    -------
+    ProductStats
+    """
+    now = as_of or datetime.now(tz=timezone.utc)
+    cutoff_90d = now - timedelta(days=90)
+    cutoff_60d = now - timedelta(days=60)
+
+    history = get_price_history(session, canonical_key)
+    if not history:
+        return ProductStats(
+            lowest_ever=None,
+            lowest_90d=None,
+            median_90d=None,
+            times_on_sale_90d=0,
+            is_at_historical_low=False,
+            fake_discount=False,
+        )
+
+    all_prices = [p.discounted_price for p in history]
+    prices_90d = [
+        p.discounted_price for p in history
+        if _ensure_aware(p.scraped_at) >= cutoff_90d
+    ]
+    prices_60d = [
+        p.discounted_price for p in history
+        if _ensure_aware(p.scraped_at) >= cutoff_60d
+    ]
+    orig_60d = [
+        p.original_price for p in history
+        if _ensure_aware(p.scraped_at) >= cutoff_60d and p.original_price is not None
+    ]
+
+    lowest_ever = min(all_prices)
+    lowest_90d = min(prices_90d) if prices_90d else None
+    median_90d = statistics.median(prices_90d) if prices_90d else None
+    median_60d_disc = statistics.median(prices_60d) if prices_60d else None
+    median_60d_orig = statistics.median(orig_60d) if orig_60d else None
+
+    # Current best price across all chains
+    current_best = min(
+        p.discounted_price for p in history
+        if _ensure_aware(p.scraped_at) >= cutoff_90d
+    ) if prices_90d else lowest_ever
+
+    is_at_historical_low = (current_best is not None and current_best <= lowest_ever * 1.001)
+
+    # Fake-discount heuristic: "discount" if both prices barely deviate from median
+    fake_discount = False
+    if median_60d_disc is not None and len(prices_60d) >= 2:
+        latest = history[-1]
+        disc_stable = (
+            abs(latest.discounted_price - median_60d_disc) / (median_60d_disc or 1) <= 0.05
+        )
+        orig_stable = (
+            median_60d_orig is not None
+            and latest.original_price is not None
+            and abs(latest.original_price - median_60d_orig) / (median_60d_orig or 1) <= 0.02
+        )
+        fake_discount = disc_stable and orig_stable
+
+    return ProductStats(
+        lowest_ever=lowest_ever,
+        lowest_90d=lowest_90d,
+        median_90d=median_90d,
+        times_on_sale_90d=len(prices_90d),
+        is_at_historical_low=is_at_historical_low,
+        fake_discount=fake_discount,
+    )
+
+
+def _ensure_aware(dt: datetime) -> datetime:
+    """Return a timezone-aware datetime; assume UTC if naive."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 # ---------------------------------------------------------------------------
