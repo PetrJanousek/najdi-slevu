@@ -1,0 +1,40 @@
+{
+  "canonical_key": "madeta__maslo__250_g",
+  "history": [
+    {
+      "scraped_at": "2026-01-13T09:15:00Z",
+      "supermarket": "Albert",
+      "discounted_price": 39.90,
+      "original_price": 49.90,
+      "canonical_key": "madeta__maslo__250_g"
+    },
+    {
+      "scraped_at": "2026-02-03T08:45:00Z",
+      "supermarket": "Lidl",
+      "discounted_price": 36.90,
+      "original_price": 49.90,
+      "canonical_key": "madeta__maslo__250_g"
+    },
+    {
+      "scraped_at": "2026-02-24T10:00:00Z",
+      "supermarket": "Billa",
+      "discounted_price": 41.90,
+      "original_price": 49.90,
+      "canonical_key": "madeta__maslo__250_g"
+    },
+    {
+      "scraped_at": "2026-03-17T09:30:00Z",
+      "supermarket": "Penny",
+      "discounted_price": 37.90,
+      "original_price": 49.90,
+      "canonical_key": "madeta__maslo__250_g"
+    },
+    {
+      "scraped_at": "2026-04-07T08:00:00Z",
+      "supermarket": "Lidl",
+      "discounted_price": 34.90,
+      "original_price": 49.90,
+      "canonical_key": "madeta__maslo__250_g"
+    }
+  ]
+}

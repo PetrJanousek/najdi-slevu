@@ -1,0 +1,79 @@
+{
+  "items": [
+    {
+      "id": 101,
+      "supermarket": { "id": 1, "name": "Lidl" },
+      "name": "Máslo Madeta 250 g",
+      "original_price": 49.90,
+      "discounted_price": 34.90,
+      "discount_pct": 30.1,
+      "valid_from": "2026-04-07",
+      "valid_to": "2026-04-13",
+      "canonical_key": "madeta__maslo__250_g",
+      "canonical_brand": "Madeta",
+      "canonical_product_type": "máslo",
+      "canonical_quantity_value": 250.0,
+      "canonical_quantity_unit": "g"
+    },
+    {
+      "id": 102,
+      "supermarket": { "id": 2, "name": "Albert" },
+      "name": "Bio Mléko plnotučné 3,5 % 1 l",
+      "original_price": 29.90,
+      "discounted_price": 22.90,
+      "discount_pct": 23.4,
+      "valid_from": "2026-04-07",
+      "valid_to": "2026-04-13",
+      "canonical_key": "bio_mleko__1.0_l",
+      "canonical_product_type": "mléko",
+      "canonical_quantity_value": 1.0,
+      "canonical_quantity_unit": "l"
+    },
+    {
+      "id": 103,
+      "supermarket": { "id": 3, "name": "Billa" },
+      "name": "Nescafé Classic instantní káva 200 g",
+      "original_price": 139.90,
+      "discounted_price": 99.90,
+      "discount_pct": 28.6,
+      "valid_from": "2026-04-07",
+      "valid_to": "2026-04-13",
+      "canonical_key": "nescafe__kava__200_g",
+      "canonical_brand": "Nescafé",
+      "canonical_product_type": "káva",
+      "canonical_quantity_value": 200.0,
+      "canonical_quantity_unit": "g"
+    },
+    {
+      "id": 104,
+      "supermarket": { "id": 4, "name": "Penny" },
+      "name": "Plzeňský Prazdroj 0,5 l 6 ks",
+      "original_price": 89.90,
+      "discounted_price": 69.90,
+      "discount_pct": 22.2,
+      "valid_from": "2026-04-07",
+      "valid_to": "2026-04-13",
+      "canonical_key": "prazdroj__pivo__0.5_l",
+      "canonical_brand": "Prazdroj",
+      "canonical_product_type": "pivo",
+      "canonical_quantity_value": 0.5,
+      "canonical_quantity_unit": "l"
+    },
+    {
+      "id": 105,
+      "supermarket": { "id": 5, "name": "Tesco" },
+      "name": "Kuřecí prsní řízky mražené 1 kg",
+      "original_price": 179.90,
+      "discounted_price": 129.90,
+      "discount_pct": 27.8,
+      "valid_from": "2026-04-07",
+      "valid_to": "2026-04-13",
+      "canonical_product_type": "kuřecí maso",
+      "canonical_quantity_value": 1.0,
+      "canonical_quantity_unit": "kg"
+    }
+  ],
+  "total": 243,
+  "page": 1,
+  "page_size": 50
+}
