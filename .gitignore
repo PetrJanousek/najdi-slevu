@@ -12,6 +12,9 @@ tests/fixtures/leaflets/**/*.pdf
 # Personal watchlist (contains private keywords — commit only watchlist.example.yaml)
 watchlist.yaml
 
+# Runtime data (JSONL logs, downloaded PDFs, etc.)
+data/
+
 # Python build artefacts
 __pycache__/
 *.py[cod]
