@@ -13,6 +13,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from scraper.canonical import canonicalize
 from scraper.db.models import Discount, HotDealHit, ScrapeRun, Supermarket, WatchlistItem
 from scraper.models import Discount as ParsedDiscount
 
@@ -123,6 +124,7 @@ def save_discounts(
             continue
         seen.add(dedup_key)
 
+        cp = canonicalize(p.name)
         row = Discount(
             scrape_run_id=run.id,
             supermarket_id=supermarket.id if supermarket else None,
@@ -134,6 +136,11 @@ def save_discounts(
             valid_from=p.valid_from,
             valid_to=p.valid_to,
             raw_text=p.raw_text,
+            canonical_brand=cp.brand,
+            canonical_product_type=cp.product_type,
+            canonical_quantity_value=cp.quantity_value,
+            canonical_quantity_unit=cp.quantity_unit,
+            canonical_key=cp.canonical_key,
         )
         session.add(row)
         rows.append(row)

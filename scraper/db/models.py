@@ -76,6 +76,13 @@ class Discount(Base):
     valid_to: Mapped[Optional[date]] = mapped_column(Date)
     raw_text: Mapped[Optional[str]] = mapped_column(Text)
 
+    # Canonical product fields (populated by scraper/canonical.py)
+    canonical_brand: Mapped[Optional[str]] = mapped_column(String(256))
+    canonical_product_type: Mapped[Optional[str]] = mapped_column(String(128))
+    canonical_quantity_value: Mapped[Optional[float]] = mapped_column(Float)
+    canonical_quantity_unit: Mapped[Optional[str]] = mapped_column(String(16))
+    canonical_key: Mapped[Optional[str]] = mapped_column(String(512), index=True)
+
     scrape_run: Mapped["ScrapeRun"] = relationship(back_populates="discounts")
     supermarket: Mapped[Optional["Supermarket"]] = relationship(back_populates="discounts")
     hot_deal_hits: Mapped[list["HotDealHit"]] = relationship(back_populates="discount")
